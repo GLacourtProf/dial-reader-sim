@@ -1,16 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dial Reader Sim</title>
+  <title>Exerciceur de comparateur — Lecture 0–25 mm</title>
+  <meta name="description" content="Exerciseur de lecture de comparateur à cadran (0–25 mm, 0,01 mm/div). Exercice aléatoire avec correction et suivi de progression." />
 </head>
 
 
 <body>
+  <script>
+    // Applique le thème avant le premier rendu pour éviter le flash clair.
+    (function () {
+      try {
+        var t = localStorage.getItem("dial-reader-theme");
+        if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    })();
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

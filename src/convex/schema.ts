@@ -34,10 +34,25 @@ const schema = defineSchema(
 
     // add other tables here
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // Élèves identifiés par nom / prénom / classe (sans adresse mail)
+    students: defineTable({
+      key: v.string(), // clé d'identité normalisée "nom|prenom|classe"
+      nom: v.string(),
+      prenom: v.string(),
+      classe: v.string(),
+      createdAt: v.number(),
+    }).index("by_key", ["key"]),
+
+    // Une tentative = une lecture de comparateur validée
+    attempts: defineTable({
+      studentId: v.id("students"),
+      expected: v.number(), // valeur générée par la simulation (mm)
+      value: v.number(), // valeur saisie par l'élève (mm)
+      correct: v.boolean(),
+      usedHelp: v.boolean(),
+      seconds: v.number(),
+      createdAt: v.number(),
+    }).index("by_student", ["studentId"]),
   },
   {
     schemaValidation: false,

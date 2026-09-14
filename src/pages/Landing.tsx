@@ -1,51 +1,131 @@
-// TODO: REPLACE THIS LANDING PAGE WITH AN ELEGANT, THEMATIC, AND WELL-DESIGNED LANDING PAGE RELEVANT TO THE PROJECT
-import { motion } from "framer-motion";
-import { Loader } from "lucide-react";
-import logo from "@/assets/logo.svg";
+import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { Dial } from "@/components/Dial";
+import { ArrowRight, GraduationCap, Ruler, Users } from "lucide-react";
+
+const DEMO = { revolutions: 12, fraction: 0.48 };
 
 export default function Landing() {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen flex flex-col"
-    >
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <SiteHeader />
 
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="max-w-5xl mx-auto relative px-4">
-        {/* TODO: landing page goes here; replace with the landing page */}
-        <div className="flex justify-center">
-          <img
-            src={logo}
-            alt="Lock Icon"
-            width={64}
-            height={64}
-            className="rounded-lg mb-8 mt-24"
-          />
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="mx-auto w-full max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Métrologie · Lecture de comparateur
+              </p>
+              <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+                Apprenez à lire un comparateur
+                <span className="text-muted-foreground"> au centième.</span>
+              </h1>
+              <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
+                Un exerciseur sobre et précis&nbsp;: une position est tirée au
+                hasard entre 0 et 25&nbsp;mm, à vous de lire les deux aiguilles
+                et d&apos;annoncer la mesure au centième de millimètre près.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button size="lg" asChild>
+                  <a href="/exercice">
+                    Commencer l&apos;exercice
+                    <ArrowRight className="ml-2 size-4" />
+                  </a>
+                </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <a href="/formateur">Espace formateur</a>
+                </Button>
+              </div>
+              <p className="mt-4 text-xs text-muted-foreground">
+                Progression enregistrée avec votre nom, votre prénom et votre
+                classe — sans adresse mail.
+              </p>
+            </div>
+
+            <div className="flex justify-center lg:justify-end">
+              <div className="rounded-xl border border-border/70 bg-card p-6 shadow-none">
+                <Dial
+                  fraction={DEMO.fraction}
+                  revolutions={DEMO.revolutions}
+                  size={340}
+                  label="Exemple de comparateur : 12 mm et 48 centièmes"
+                />
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Exemple de lecture&nbsp;: 12,48&nbsp;mm
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mx-auto w-full max-w-6xl px-6">
+          <div className="border-t border-border/60" />
         </div>
-        <div className="flex items-center justify-center text-foreground">
-          <Loader className="h-8 w-8 animate-spin mr-4 shrink-0" />
-          <span className="text-base">
-            <a
-              href="https://freebuff.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80 transition-colors font-medium"
-            >
-              freebuff.com
-            </a>
-            {" "}is generating your project...
-          </span>
+
+        {/* Fonctionnement */}
+        <section className="mx-auto w-full max-w-6xl px-6 py-16">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Comment ça se passe
+          </h2>
+          <div className="mt-8 grid gap-8 sm:grid-cols-3">
+            {[
+              {
+                icon: Users,
+                title: "1 · Identifiez-vous",
+                body: "Nom, prénom, classe. Rien d'autre : aucun compte, aucune adresse mail.",
+              },
+              {
+                icon: Ruler,
+                title: "2 · Lisez le cadran",
+                body: "Petite aiguille = tours complets, grande aiguille = centièmes. Saisissez la mesure.",
+              },
+              {
+                icon: GraduationCap,
+                title: "3 · Vérifiez et progressez",
+                body: "L'exerciceur corrige au centième près et garde l'historique pour le formateur.",
+              },
+            ].map(({ icon: Icon, title, body }) => (
+              <div key={title} className="flex flex-col gap-3">
+                <div className="flex size-9 items-center justify-center rounded-md border border-border/70 bg-card">
+                  <Icon className="size-4 text-foreground" />
+                </div>
+                <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+                <p className="text-sm leading-6 text-muted-foreground">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA final */}
+        <section className="border-t border-border/60">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-4 px-6 py-14 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Prêt à mesurer&nbsp;?
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Chaque tirage est différent — entraînez-vous autant que vous
+                voulez.
+              </p>
+            </div>
+            <Button asChild>
+              <a href="/exercice">
+                Ouvrir l&apos;exerciceur
+                <ArrowRight className="ml-2 size-4" />
+              </a>
+            </Button>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-border/60">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 text-xs text-muted-foreground">
+          <span>Exerciceur de comparateur · v1 — lecture 0–25 mm</span>
+          <span>Résolution 0,01 mm par division</span>
         </div>
-        <p className="text-center text-muted-foreground py-6 text-sm mt-2">
-          Check progress on your project page.
-        </p>
-        
-        </div>
-      </div>
-    </motion.div>
+      </footer>
+    </div>
   );
 }
