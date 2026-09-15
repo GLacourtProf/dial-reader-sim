@@ -123,10 +123,11 @@ export const Dial = memo(function Dial({
 
       {/* Étiquettes principales */}
       {LABELS.map(({ i, big, small }) => {
+        // i = index de graduation (0, 10, … 90) → 3,6° par division.
         // Chiffres des dixièmes alignés sur le même index majeur, en rayon
         // intérieur (façon Mitutoyo 2052A).
-        const pBig = polar(i * 36, 138);
-        const pSmall = polar(i * 36, 118);
+        const pBig = polar(i * 3.6, 138);
+        const pSmall = polar(i * 3.6, 118);
         return (
           <g key={i}>
             <text
