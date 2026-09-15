@@ -18,30 +18,22 @@ export function SiteHeader() {
             Comparateur · Exerciceur
           </span>
         </a>
-        <div className="flex items-center gap-1">
-          <a
-            href="/formateur"
-            className="mr-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Espace formateur
-          </a>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            aria-label={
-              theme === "dark"
-                ? "Passer en mode clair"
-                : "Passer en mode sombre"
-            }
-          >
-            {theme === "dark" ? (
-              <Sun className="size-4" />
-            ) : (
-              <Moon className="size-4" />
-            )}
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggle}
+          aria-label={
+            theme === "dark"
+              ? "Passer en mode clair"
+              : "Passer en mode sombre"
+          }
+        >
+          {theme === "dark" ? (
+            <Sun className="size-4" />
+          ) : (
+            <Moon className="size-4" />
+          )}
+        </Button>
       </div>
     </header>
   );

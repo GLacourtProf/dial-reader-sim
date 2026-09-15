@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Dial } from "@/components/Dial";
-import { ArrowRight, GraduationCap, Ruler, Users } from "lucide-react";
+import { ArrowRight, FileText, Ruler, Users } from "lucide-react";
 
 const DEMO = { revolutions: 12, fraction: 0.48 };
 
@@ -34,13 +34,10 @@ export default function Landing() {
                     <ArrowRight className="ml-2 size-4" />
                   </a>
                 </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <a href="/formateur">Espace formateur</a>
-                </Button>
               </div>
               <p className="mt-4 text-xs text-muted-foreground">
-                Progression enregistrée avec votre nom, votre prénom et votre
-                classe — sans adresse mail.
+                Aucun compte, aucune donnée en ligne&nbsp;: tout reste sur votre
+                appareil.
               </p>
             </div>
 
@@ -73,8 +70,8 @@ export default function Landing() {
             {[
               {
                 icon: Users,
-                title: "1 · Identifiez-vous",
-                body: "Nom, prénom, classe. Rien d'autre : aucun compte, aucune adresse mail.",
+                title: "1 · Renseignez votre identité",
+                body: "Nom, prénom, classe — uniquement pour la fiche. Aucun compte, aucune adresse mail.",
               },
               {
                 icon: Ruler,
@@ -82,9 +79,9 @@ export default function Landing() {
                 body: "Petite aiguille = tours complets, grande aiguille = centièmes. Saisissez la mesure.",
               },
               {
-                icon: GraduationCap,
-                title: "3 · Vérifiez et progressez",
-                body: "L'exerciceur corrige au centième près et garde l'historique pour le formateur.",
+                icon: FileText,
+                title: "3 · Générez votre fiche",
+                body: "Score en pourcentage — du millimètre au centième près — et nombre de tentatives, dans une fiche imprimable.",
               },
             ].map(({ icon: Icon, title, body }) => (
               <div key={title} className="flex flex-col gap-3">
@@ -123,7 +120,7 @@ export default function Landing() {
       <footer className="border-t border-border/60">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 text-xs text-muted-foreground">
           <span>Exerciceur de comparateur · v1 — lecture 0–25 mm</span>
-          <span>Résolution 0,01 mm par division</span>
+          <span>Fiche générée localement · aucune donnée hébergée</span>
         </div>
       </footer>
     </div>

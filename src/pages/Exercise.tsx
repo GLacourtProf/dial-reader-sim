@@ -4,12 +4,17 @@ import { Dial } from "@/components/Dial";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import {
+  buildSheetHtml,
+  countQuality,
+  qualityOf,
+  scorePct,
+  type AnswerQuality,
+  type Identity,
+  type LocalAttempt,
+} from "@/lib/scoring";
 import {
   formatMm,
-  isReadingCorrect,
   randomReading,
   readingHelpText,
   type Reading,
@@ -17,133 +22,140 @@ import {
 import {
   ArrowRight,
   CheckCircle2,
+  FileDown,
   Lightbulb,
   RotateCcw,
   XCircle,
 } from "lucide-react";
 
 type Step = "identity" | "exercise";
-type Feedback = { ok: boolean; expected: number; given: number } | null;
+type Feedback = {
+  quality: AnswerQuality;
+  expected: number;
+  given: number;
+} | null;
 
-const STUDENT_KEY = "dial-reader-student";
+const IDENTITY_KEY = "dial-reader-identity";
+const ATTEMPTS_KEY = "dial-reader-attempts";
 
-function loadStoredStudent(): {
-  studentId: Id<"students">;
-  nom: string;
-  prenom: string;
-  classe: string;
-} | null {
+function loadIdentity(): Identity | null {
   try {
-    const raw = localStorage.getItem(STUDENT_KEY);
+    const raw = localStorage.getItem(IDENTITY_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed?.studentId && parsed?.nom && parsed?.prenom && parsed?.classe) {
-      return parsed;
-    }
+    const p = JSON.parse(raw) as Partial<Identity>;
+    if (p?.nom && p?.prenom && p?.classe) return p as Identity;
   } catch {
     /* ignore */
   }
   return null;
 }
 
+function loadAttempts(): LocalAttempt[] {
+  try {
+    const raw = localStorage.getItem(ATTEMPTS_KEY);
+    if (!raw) return [];
+    const p = JSON.parse(raw);
+    if (Array.isArray(p)) return p as LocalAttempt[];
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+const POINT_LABEL: Record<AnswerQuality, string> = {
+  centieme: "+1 pt",
+  dixieme: "+0,75 pt",
+  mm: "+0,5 pt",
+  faux: "0 pt",
+};
+
 export default function Exercise() {
-  const [student, setStudent] = useState(loadStoredStudent);
+  const [identity, setIdentity] = useState<Identity | null>(loadIdentity);
   const [step, setStep] = useState<Step>(() =>
-    loadStoredStudent() ? "exercise" : "identity",
+    loadIdentity() ? "exercise" : "identity",
   );
 
-  const [nom, setNom] = useState(student?.nom ?? "");
-  const [prenom, setPrenom] = useState(student?.prenom ?? "");
-  const [classe, setClasse] = useState(student?.classe ?? "");
+  const [nom, setNom] = useState(() => loadIdentity()?.nom ?? "");
+  const [prenom, setPrenom] = useState(() => loadIdentity()?.prenom ?? "");
+  const [classe, setClasse] = useState(() => loadIdentity()?.classe ?? "");
   const [idError, setIdError] = useState<string | null>(null);
-  const [identifying, setIdentifying] = useState(false);
 
+  const [attempts, setAttempts] = useState<LocalAttempt[]>(loadAttempts);
   const [reading, setReading] = useState<Reading>(() => randomReading());
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [help, setHelp] = useState(false);
-  const startTime = useRef<number>(Date.now());
   const answerRef = useRef<HTMLInputElement>(null);
 
-  const identify = useMutation(api.exercises.identifyStudent);
-  const recordAttempt = useMutation(api.exercises.recordAttempt);
-  const progress = useQuery(
-    api.exercises.getStudentProgress,
-    student ? { studentId: student.studentId } : "skip",
-  );
+  // Tout est local : les tentatives vivent uniquement dans ce navigateur.
+  useEffect(() => {
+    localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
+  }, [attempts]);
 
   const redraw = useCallback(() => {
     setReading(randomReading());
     setAnswer("");
     setFeedback(null);
     setHelp(false);
-    startTime.current = Date.now();
     answerRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    startTime.current = Date.now();
-  }, []);
-
-  const handleIdentify = async (e: React.FormEvent) => {
+  const handleIdentify = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nom.trim() || !prenom.trim() || !classe.trim()) {
       setIdError("Merci de remplir les trois champs.");
       return;
     }
-    setIdentifying(true);
-    setIdError(null);
-    try {
-      const studentId = await identify({
-        nom: nom.trim(),
-        prenom: prenom.trim(),
-        classe: classe.trim(),
-      });
-      const s = {
-        studentId,
-        nom: nom.trim(),
-        prenom: prenom.trim(),
-        classe: classe.trim(),
-      };
-      localStorage.setItem(STUDENT_KEY, JSON.stringify(s));
-      setStudent(s);
-      setStep("exercise");
-      startTime.current = Date.now();
-    } catch {
-      setIdError("Impossible d'enregistrer l'identification. Réessayez.");
-    } finally {
-      setIdentifying(false);
-    }
+    const id: Identity = {
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      classe: classe.trim(),
+    };
+    localStorage.setItem(IDENTITY_KEY, JSON.stringify(id));
+    setIdentity(id);
+    setStep("exercise");
   };
 
-  const submitAnswer = async (raw: string) => {
+  const submitAnswer = (raw: string) => {
     const parsed = Number.parseFloat(raw.replace(",", "."));
     if (!Number.isFinite(parsed)) return;
-    const ok = isReadingCorrect(reading.value, parsed);
-    setFeedback({ ok, expected: reading.value, given: parsed });
-    if (student) {
-      try {
-        await recordAttempt({
-          studentId: student.studentId,
-          expected: reading.value,
-          value: parsed,
-          correct: ok,
-          usedHelp: help,
-          seconds: Math.round((Date.now() - startTime.current) / 1000),
-        });
-      } catch {
-        /* la correction reste affichée même si l'enregistrement échoue */
-      }
-    }
+    const quality = qualityOf(reading.value, parsed);
+    setFeedback({ quality, expected: reading.value, given: parsed });
+    setAttempts((prev) => [
+      ...prev,
+      {
+        expected: reading.value,
+        given: parsed,
+        quality,
+        usedHelp: help,
+        createdAt: Date.now(),
+      },
+    ]);
   };
 
   const handleAnswerForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (feedback) return;
-    void submitAnswer(answer);
+    submitAnswer(answer);
   };
 
-  if (step === "identity" || !student) {
+  const generateSheet = () => {
+    if (!identity) return;
+    const blob = new Blob([buildSheetHtml(identity, attempts)], {
+      type: "text/html;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download =
+      `fiche-${identity.prenom}-${identity.nom}`
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-") + ".html";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (step === "identity" || !identity) {
     return (
       <div className="flex min-h-screen flex-col bg-background text-foreground">
         <SiteHeader />
@@ -156,8 +168,8 @@ export default function Exercise() {
               Identification
             </h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Vos progrès sont enregistrés avec votre nom, votre prénom et votre
-              classe. Aucune adresse mail n'est demandée.
+              Nom, prénom et classe — uniquement pour votre fiche de résultats.
+              Tout reste sur cet appareil, rien n&apos;est envoyé en ligne.
             </p>
             <div className="mt-6 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -189,8 +201,8 @@ export default function Exercise() {
                 />
               </div>
               {idError && <p className="text-sm text-destructive">{idError}</p>}
-              <Button type="submit" disabled={identifying} className="mt-2">
-                {identifying ? "Enregistrement…" : "Commencer l'exercice"}
+              <Button type="submit" className="mt-2">
+                Commencer l&apos;exercice
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </div>
@@ -210,12 +222,13 @@ export default function Exercise() {
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
           {/* Cadran */}
           <section className="flex-1">
-            <div className="flex items-baseline justify-between">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h1 className="text-lg font-semibold tracking-tight">
-                Exercice 1 — Lecture d'un comparateur 0–25 mm
+                Exercice 1 — Lecture d&apos;un comparateur 0–25 mm
               </h1>
               <span className="text-xs text-muted-foreground">
-                {student.prenom} {student.nom.toUpperCase()} · {student.classe}
+                {identity.prenom} {identity.nom.toUpperCase()} ·{" "}
+                {identity.classe}
               </span>
             </div>
             <div className="mt-6 flex justify-center rounded-lg border border-border/70 bg-card p-8">
@@ -279,37 +292,67 @@ export default function Exercise() {
                 <div className="mt-4">
                   <div
                     className={`flex items-start gap-2 rounded-md border p-3 ${
-                      feedback.ok
-                        ? "border-border bg-secondary"
-                        : "border-destructive/30 bg-destructive/5"
+                      feedback.quality === "faux"
+                        ? "border-destructive/30 bg-destructive/5"
+                        : "border-border bg-secondary"
                     }`}
                   >
-                    {feedback.ok ? (
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
-                    ) : (
+                    {feedback.quality === "faux" ? (
                       <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                    ) : (
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-foreground" />
                     )}
                     <div className="text-sm leading-6">
-                      {feedback.ok ? (
+                      {feedback.quality === "centieme" && (
                         <p>
-                          <span className="font-semibold">Juste.</span>{" "}
-                          {formatMm(feedback.expected)}&nbsp;mm
-                        </p>
-                      ) : (
-                        <p>
-                          <span className="font-semibold">Faux.</span> Vous
-                          avez répondu {formatMm(feedback.given)}&nbsp;mm, la
-                          bonne mesure était{" "}
-                          <span className="font-semibold font-num">
+                          <span className="font-semibold">Juste.</span> Exact au
+                          centième près :{" "}
+                          <span className="font-num">
                             {formatMm(feedback.expected)}&nbsp;mm
                           </span>
-                          .
+                          .{" "}
+                          <span className="font-num text-muted-foreground">
+                            {POINT_LABEL[feedback.quality]}
+                          </span>
                         </p>
                       )}
-                      {!feedback.ok && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {readingHelpText(r)}
+                      {feedback.quality === "dixieme" && (
+                        <p>
+                          <span className="font-semibold">Presque.</span> La
+                          réponse est exacte au dixième de millimètre près
+                          (écart ≤ 0,05&nbsp;mm), pas au centième.{" "}
+                          <span className="font-num text-muted-foreground">
+                            {POINT_LABEL[feedback.quality]}
+                          </span>
                         </p>
+                      )}
+                      {feedback.quality === "mm" && (
+                        <p>
+                          <span className="font-semibold">
+                            Au millimètre près seulement.
+                          </span>{" "}
+                          La réponse est exacte au millimètre près (écart ≤
+                          0,5&nbsp;mm), pas au dixième.{" "}
+                          <span className="font-num text-muted-foreground">
+                            {POINT_LABEL[feedback.quality]}
+                          </span>
+                        </p>
+                      )}
+                      {feedback.quality === "faux" && (
+                        <>
+                          <p>
+                            <span className="font-semibold">Faux.</span> Vous
+                            avez répondu {formatMm(feedback.given)}&nbsp;mm, la
+                            bonne mesure était{" "}
+                            <span className="font-semibold font-num">
+                              {formatMm(feedback.expected)}&nbsp;mm
+                            </span>
+                            .
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {readingHelpText(r)}
+                          </p>
+                        </>
                       )}
                     </div>
                   </div>
@@ -325,48 +368,81 @@ export default function Exercise() {
               )}
             </form>
 
-            {/* Progression */}
+            {/* Résultats locaux + fiche */}
             <div className="mt-6 rounded-lg border border-border/70 bg-card p-6">
-              <h2 className="text-sm font-semibold tracking-tight">
-                Votre progression
-              </h2>
-              {progress && progress.total > 0 ? (
-                <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Réponses</dt>
-                    <dd className="font-num text-lg font-semibold">
-                      {progress.total}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Réussies</dt>
-                    <dd className="font-num text-lg font-semibold">
-                      {progress.correct}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Réussite</dt>
-                    <dd className="font-num text-lg font-semibold">
-                      {progress.accuracy}%
-                    </dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Aucune réponse pour l'instant. Vos résultats s'afficheront ici.
-                </p>
-              )}
-              <button
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-sm font-semibold tracking-tight">
+                  Vos résultats
+                </h2>
+                <span className="font-num text-lg font-semibold">
+                  {scorePct(attempts)}&nbsp;%
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Score pondéré — centième 1&nbsp;pt · dixième 0,75&nbsp;pt ·
+                millimètre 0,5&nbsp;pt.
+              </p>
+              <dl className="mt-4 grid grid-cols-2 gap-2 text-center">
+                <div className="rounded-md border border-border/60 p-2">
+                  <dt className="text-xs text-muted-foreground">Tentatives</dt>
+                  <dd className="font-num text-base font-semibold">
+                    {attempts.length}
+                  </dd>
+                </div>
+                <div className="rounded-md border border-border/60 p-2">
+                  <dt className="text-xs text-muted-foreground">Au centième</dt>
+                  <dd className="font-num text-base font-semibold">
+                    {countQuality(attempts, "centieme")}
+                  </dd>
+                </div>
+                <div className="rounded-md border border-border/60 p-2">
+                  <dt className="text-xs text-muted-foreground">Au dixième</dt>
+                  <dd className="font-num text-base font-semibold">
+                    {countQuality(attempts, "dixieme")}
+                  </dd>
+                </div>
+                <div className="rounded-md border border-border/60 p-2">
+                  <dt className="text-xs text-muted-foreground">Au mm</dt>
+                  <dd className="font-num text-base font-semibold">
+                    {countQuality(attempts, "mm")}
+                  </dd>
+                </div>
+              </dl>
+              <Button
                 type="button"
-                className="mt-4 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                onClick={() => {
-                  localStorage.removeItem(STUDENT_KEY);
-                  setStudent(null);
-                  setStep("identity");
-                }}
+                variant="outline"
+                className="mt-4 w-full"
+                onClick={generateSheet}
+                disabled={attempts.length === 0}
               >
-                Changer d'élève
-              </button>
+                <FileDown className="mr-2 size-4" />
+                Générer la fiche de résultats
+              </Button>
+              <div className="mt-4 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  onClick={() => setStep("identity")}
+                >
+                  Modifier l&apos;identité
+                </button>
+                <button
+                  type="button"
+                  className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  onClick={() => {
+                    if (
+                      attempts.length === 0 ||
+                      window.confirm(
+                        "Effacer tous les résultats de cet appareil ?",
+                      )
+                    ) {
+                      setAttempts([]);
+                    }
+                  }}
+                >
+                  Effacer les résultats
+                </button>
+              </div>
             </div>
           </section>
         </div>
