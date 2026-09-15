@@ -43,8 +43,8 @@ function polar(angleDeg: number, radius: number, cx = C, cy = C) {
 }
 
 /** Sous-cadran des tours (petite aiguille), comme sur le comparateur réel. */
-const SUB = { cx: C, cy: 126, r: 52 };
-const SUB_LABELS = ["0", "5", "10", "15", "20", "25"];
+const SUB = { cx: C, cy: 140, r: 46 };
+const SUB_LABELS = ["0", "5", "10", "15", "20"];
 
 export const Dial = memo(function Dial({
   fraction,
@@ -81,7 +81,7 @@ export const Dial = memo(function Dial({
       <circle cx={C} cy={C} r={R_FACE} className="fill-card stroke-foreground" strokeWidth="3" />
       <circle cx={C} cy={C} r={R_FACE - 12} className="fill-none stroke-foreground/50" strokeWidth="1" />
       {/* Cercle intérieur en creux, comme sur un vrai comparateur */}
-      <circle cx={C} cy={C} r={112} className="fill-muted/50 stroke-foreground/20" strokeWidth="1" />
+      <circle cx={C} cy={C} r={110} className="fill-muted/50 stroke-foreground/20" strokeWidth="1" />
 
       {/* Graduations (100 divisions / tour, 1 division = 0,01 mm) */}
       {TICKS.map((t, i) => {
@@ -123,8 +123,10 @@ export const Dial = memo(function Dial({
 
       {/* Étiquettes principales */}
       {LABELS.map(({ i, big, small }) => {
+        // Chiffres des dixièmes alignés sur le même index majeur, en rayon
+        // intérieur (façon Mitutoyo 2052A).
         const pBig = polar(i * 36, 138);
-        const pSmall = polar(i * 36 + 21, 138);
+        const pSmall = polar(i * 36, 118);
         return (
           <g key={i}>
             <text
